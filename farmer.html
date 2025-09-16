@@ -4,11 +4,52 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Farmer Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #4facfe, #00f2fe);
+      min-height: 100vh;
+      display: flex; justify-content: center; align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .dashboard {
+      width: 95%; max-width: 900px;
+      padding: 2rem;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 { text-align: center; margin-bottom: 1rem; }
+    nav { text-align: center; margin-bottom: 1rem; }
+    nav button {
+      margin: .5rem; padding: .7rem 1.2rem;
+      border: none; border-radius: 15px;
+      background: rgba(255,255,255,0.3); color: white; font-weight: bold;
+      cursor: pointer; transition: .3s;
+    }
+    nav button:hover { transform: scale(1.1); background: rgba(255,255,255,0.5); }
+    section { display: none; }
+    section.active { display: block; animation: slideUp .6s ease; }
+    .card {
+      background: rgba(255,255,255,0.2);
+      padding: 1rem; border-radius: 12px; margin: .5rem 0;
+      animation: fadeIn .5s ease;
+    }
+    form { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; }
+    form input, form button {
+      padding: .6rem; border: none; border-radius: 10px;
+    }
+    form button { background: #00f2fe; font-weight: bold; cursor: pointer; }
+    form button:hover { background: #4facfe; color: white; }
+    .crop-img { max-width: 120px; border-radius: 10px; margin-top: .5rem; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+    @keyframes slideUp { from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);} }
+  </style>
 </head>
 <body>
-  <div class="dashboard glass">
-    <h1>🌾 Farmer Dashboard</h1>
+  <div class="dashboard">
+    <h1 id="welcome">🌾 Farmer Dashboard</h1>
     <nav>
       <button onclick="showSection('listings')">My Listings</button>
       <button onclick="showSection('create')">Create New Listing</button>
@@ -16,32 +57,143 @@
       <button onclick="showSection('sales')">Sales History</button>
     </nav>
 
+    <!-- Listings -->
     <section id="listings" class="active">
       <h2>My Listings</h2>
-      <p>No listings yet...</p>
+      <div id="listingsContainer"></div>
     </section>
 
+    <!-- Create -->
     <section id="create">
       <h2>Create New Listing</h2>
-      <form>
+      <form id="listingForm">
         <input type="text" placeholder="Crop Name" required>
         <input type="number" placeholder="Quantity (kg)" required>
         <input type="number" placeholder="Price per kg (₹)" required>
         <input type="date" required>
+        <input type="file" id="cropImage" accept="image/*">
         <button type="submit">Submit</button>
       </form>
     </section>
 
+    <!-- Offers -->
     <section id="offers">
       <h2>Incoming Offers</h2>
-      <p>No offers yet...</p>
+      <div id="offersContainer"></div>
     </section>
 
+    <!-- Sales -->
     <section id="sales">
       <h2>Sales History</h2>
-      <p>No sales recorded...</p>
+      <div id="salesContainer"></div>
     </section>
   </div>
-  <script src="script.js"></script>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      renderAll();
+    }
+    function getData(key){return JSON.parse(localStorage.getItem(key))||[];}
+    function setData(k,d){localStorage.setItem(k,JSON.stringify(d));}
+
+    const userName = localStorage.getItem("userName") || "Farmer";
+    document.getElementById("welcome").innerText = `🌾 Welcome, ${userName}`;
+
+    // Create Listing
+    document.getElementById("listingForm").addEventListener("submit", e=>{
+      e.preventDefault();
+      const inputs = e.target.querySelectorAll("input");
+      const crop = inputs[0].value, qty=inputs[1].value, price=inputs[2].value, date=inputs[3].value;
+      let img="";
+      if(inputs[4].files[0]){
+        const reader=new FileReader();
+        reader.onload=()=>{ saveListing(crop, qty, price, date, reader.result); };
+        reader.readAsDataURL(inputs[4].files[0]);
+      } else { saveListing(crop, qty, price, date, img); }
+      e.target.reset();
+    });
+
+    function saveListing(crop,qty,price,date,img){
+      const listings=getData("listings");
+      listings.push({id:Date.now(), crop, quantity:qty, price, date, farmer:userName, img, status:"open"});
+      setData("listings", listings);
+      renderAll();
+    }
+
+    // Render Listings
+    function renderListings(){
+      const container=document.getElementById("listingsContainer");
+      const listings=getData("listings").filter(l=>l.farmer===userName);
+      container.innerHTML=listings.length?"":"<p>No listings...</p>";
+      listings.forEach(l=>{
+        container.innerHTML+=`
+          <div class="card">
+            <strong>${l.crop}</strong> - ${l.quantity}kg @ ₹${l.price}/kg<br>
+            Date: ${l.date}<br>
+            ${l.img?`<img src="${l.img}" class="crop-img">`:""}
+            Status: ${l.status}
+          </div>`;
+      });
+    }
+
+    // Render Offers
+    function renderOffers(){
+      const offers=getData("offers").filter(o=>{
+        const listing=getData("listings").find(l=>l.id===o.listingId);
+        return listing && listing.farmer===userName;
+      });
+      const container=document.getElementById("offersContainer");
+      container.innerHTML=offers.length?"":"<p>No offers yet...</p>";
+      offers.forEach(o=>{
+        container.innerHTML+=`
+          <div class="card">
+            Crop: ${o.crop} | Qty: ${o.qty}kg | Price: ₹${o.price}/kg<br>
+            Buyer: ${o.buyer}<br>
+            <button onclick="acceptOffer(${o.id})">Accept</button>
+            <button onclick="rejectOffer(${o.id})">Reject</button>
+          </div>`;
+      });
+    }
+
+    function acceptOffer(id){
+      const offers=getData("offers");
+      const offer=offers.find(o=>o.id===id);
+      const sales=getData("sales");
+      sales.push(offer);
+      setData("sales", sales);
+      setData("offers", offers.filter(o=>o.id!==id));
+      // mark listing closed
+      const listings=getData("listings");
+      const l=listings.find(l=>l.id===offer.listingId);
+      if(l) l.status="closed";
+      setData("listings", listings);
+      alert("Offer accepted and moved to sales!");
+      renderAll();
+    }
+    function rejectOffer(id){
+      setData("offers", getData("offers").filter(o=>o.id!==id));
+      alert("Offer rejected.");
+      renderAll();
+    }
+
+    // Render Sales
+    function renderSales(){
+      const sales=getData("sales").filter(s=>s.buyer && s.crop);
+      const container=document.getElementById("salesContainer");
+      container.innerHTML=sales.length?"":"<p>No sales yet...</p>";
+      sales.forEach(s=>{
+        container.innerHTML+=`
+          <div class="card">
+            Crop: ${s.crop} | Qty: ${s.qty}kg | Price: ₹${s.price}/kg<br>
+            Buyer: ${s.buyer}
+          </div>`;
+      });
+    }
+
+    function renderAll(){renderListings();renderOffers();renderSales();}
+    renderAll();
+  </script>
 </body>
 </html>
