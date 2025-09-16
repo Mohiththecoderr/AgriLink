@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard glass">
+    <h1>👨‍💼 Admin Dashboard</h1>
+    <nav>
+      <button onclick="showSection('users')">Manage Users</button>
+      <button onclick="showSection('stats')">Platform Stats</button>
+      <button onclick="showSection('reports')">Reports</button>
+    </nav>
+
+    <section id="users" class="active">
+      <h2>Manage Users</h2>
+      <p>No users yet...</p>
+    </section>
+
+    <section id="stats">
+      <h2>Platform Stats</h2>
+      <p>Transactions: 0 | Listings: 0 | Volume: 0kg</p>
+    </section>
+
+    <section id="reports">
+      <h2>Reports</h2>
+      <p>No reports filed yet...</p>
+    </section>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

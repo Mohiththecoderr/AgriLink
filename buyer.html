@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Buyer Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard glass">
+    <h1>🛒 Buyer Dashboard</h1>
+    <nav>
+      <button onclick="showSection('browse')">Browse Listings</button>
+      <button onclick="showSection('offers')">My Offers</button>
+      <button onclick="showSection('orders')">Confirmed Orders</button>
+    </nav>
+
+    <section id="browse" class="active">
+      <h2>Browse Listings</h2>
+      <p>Search for crops available from farmers...</p>
+    </section>
+
+    <section id="offers">
+      <h2>My Offers</h2>
+      <p>No offers made yet...</p>
+    </section>
+
+    <section id="orders">
+      <h2>Confirmed Orders</h2>
+      <p>No confirmed orders yet...</p>
+    </section>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

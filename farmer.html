@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Farmer Dashboard</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="dashboard glass">
+    <h1>🌾 Farmer Dashboard</h1>
+    <nav>
+      <button onclick="showSection('listings')">My Listings</button>
+      <button onclick="showSection('create')">Create New Listing</button>
+      <button onclick="showSection('offers')">Incoming Offers</button>
+      <button onclick="showSection('sales')">Sales History</button>
+    </nav>
+
+    <section id="listings" class="active">
+      <h2>My Listings</h2>
+      <p>No listings yet...</p>
+    </section>
+
+    <section id="create">
+      <h2>Create New Listing</h2>
+      <form>
+        <input type="text" placeholder="Crop Name" required>
+        <input type="number" placeholder="Quantity (kg)" required>
+        <input type="number" placeholder="Price per kg (₹)" required>
+        <input type="date" required>
+        <button type="submit">Submit</button>
+      </form>
+    </section>
+
+    <section id="offers">
+      <h2>Incoming Offers</h2>
+      <p>No offers yet...</p>
+    </section>
+
+    <section id="sales">
+      <h2>Sales History</h2>
+      <p>No sales recorded...</p>
+    </section>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
