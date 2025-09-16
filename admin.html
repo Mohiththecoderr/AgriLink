@@ -4,32 +4,145 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    body {
+      background: linear-gradient(135deg, #ff9966, #ff5e62);
+      min-height: 100vh;
+      display: flex; justify-content: center; align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .dashboard {
+      width: 95%; max-width: 1000px;
+      padding: 2rem; border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 { text-align: center; margin-bottom: 1rem; }
+    nav { text-align: center; margin-bottom: 1rem; }
+    nav button {
+      margin: .5rem; padding: .7rem 1.2rem;
+      border: none; border-radius: 15px;
+      background: rgba(255,255,255,0.3); color: white; font-weight: bold;
+      cursor: pointer; transition: .3s;
+    }
+    nav button:hover { transform: scale(1.1); background: rgba(255,255,255,0.5); }
+    section { display: none; }
+    section.active { display: block; animation: slideUp .6s ease; }
+    canvas { background: rgba(255,255,255,0.2); border-radius: 12px; padding: 1rem; margin: 1rem 0; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+    @keyframes slideUp { from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);} }
+  </style>
 </head>
 <body>
-  <div class="dashboard glass">
+  <div class="dashboard">
     <h1>👨‍💼 Admin Dashboard</h1>
     <nav>
-      <button onclick="showSection('users')">Manage Users</button>
-      <button onclick="showSection('stats')">Platform Stats</button>
-      <button onclick="showSection('reports')">Reports</button>
+      <button onclick="showSection('analytics')">Analytics</button>
+      <button onclick="showSection('users')">Users</button>
+      <button onclick="showSection('listings')">Listings</button>
     </nav>
 
-    <section id="users" class="active">
-      <h2>Manage Users</h2>
-      <p>No users yet...</p>
+    <!-- Analytics -->
+    <section id="analytics" class="active">
+      <h2>Analytics Overview</h2>
+      <canvas id="cropSalesChart"></canvas>
+      <canvas id="quantityOverTimeChart"></canvas>
+      <canvas id="offersTrendChart"></canvas>
     </section>
 
-    <section id="stats">
-      <h2>Platform Stats</h2>
-      <p>Transactions: 0 | Listings: 0 | Volume: 0kg</p>
+    <!-- Users -->
+    <section id="users">
+      <h2>All Users</h2>
+      <div id="usersContainer"></div>
     </section>
 
-    <section id="reports">
-      <h2>Reports</h2>
-      <p>No reports filed yet...</p>
+    <!-- Listings -->
+    <section id="listings">
+      <h2>All Listings</h2>
+      <div id="listingsContainer"></div>
     </section>
   </div>
-  <script src="script.js"></script>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      renderAll();
+    }
+    function getData(key){return JSON.parse(localStorage.getItem(key))||[];}
+
+    // Render Analytics Charts
+    function renderAnalytics(){
+      const sales=getData("sales");
+      const offers=getData("offers");
+      
+      // Sales by Crop (Pie)
+      const cropCounts={};
+      sales.forEach(s=>{cropCounts[s.crop]=(cropCounts[s.crop]||0)+parseFloat(s.qty);});
+      new Chart(document.getElementById("cropSalesChart"),{
+        type:"pie",
+        data:{
+          labels:Object.keys(cropCounts),
+          datasets:[{data:Object.values(cropCounts),backgroundColor:["#ff6384","#36a2eb","#ffce56","#4bc0c0","#9966ff"]}]
+        },
+        options:{plugins:{title:{display:true,text:"Sales by Crop"}}}
+      });
+
+      // Quantity Over Time (Line)
+      const dateCounts={};
+      sales.forEach(s=>{
+        const date=new Date(s.date).toLocaleDateString();
+        dateCounts[date]=(dateCounts[date]||0)+parseFloat(s.qty);
+      });
+      new Chart(document.getElementById("quantityOverTimeChart"),{
+        type:"line",
+        data:{
+          labels:Object.keys(dateCounts),
+          datasets:[{label:"Quantity Sold",data:Object.values(dateCounts),fill:true,borderColor:"#36a2eb",tension:0.3}]
+        },
+        options:{plugins:{title:{display:true,text:"Total Quantity Sold Over Time"}}}
+      });
+
+      // Offers Trend (Bar)
+      const statusCounts={};
+      offers.forEach(o=>{statusCounts[o.status]=(statusCounts[o.status]||0)+1;});
+      new Chart(document.getElementById("offersTrendChart"),{
+        type:"bar",
+        data:{
+          labels:Object.keys(statusCounts),
+          datasets:[{label:"Offers",data:Object.values(statusCounts),backgroundColor:["#ff6384","#36a2eb","#ffce56"]}]
+        },
+        options:{plugins:{title:{display:true,text:"Offers Trend"}}}
+      });
+    }
+
+    // Users
+    function renderUsers(){
+      const farmers=[...new Set(getData("listings").map(l=>l.farmer))];
+      const buyers=[...new Set(getData("offers").map(o=>o.buyer))];
+      const container=document.getElementById("usersContainer");
+      container.innerHTML=`<p><strong>Farmers:</strong> ${farmers.join(", ")||"None"}</p>
+                           <p><strong>Buyers:</strong> ${buyers.join(", ")||"None"}</p>`;
+    }
+
+    // Listings
+    function renderListings(){
+      const listings=getData("listings");
+      const container=document.getElementById("listingsContainer");
+      container.innerHTML=listings.length?"":"<p>No listings available...</p>";
+      listings.forEach(l=>{
+        container.innerHTML+=`<div class="card">
+          Crop: ${l.crop} | Qty: ${l.quantity}kg | Price: ₹${l.price}/kg<br>
+          Farmer: ${l.farmer} | Status: ${l.status}
+        </div>`;
+      });
+    }
+
+    function renderAll(){renderAnalytics();renderUsers();renderListings();}
+    renderAll();
+  </script>
 </body>
 </html>
