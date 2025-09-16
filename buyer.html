@@ -4,32 +4,185 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Buyer Dashboard</title>
-  <link rel="stylesheet" href="style.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #43cea2, #185a9d);
+      min-height: 100vh;
+      display: flex; justify-content: center; align-items: center;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .dashboard {
+      width: 95%; max-width: 900px;
+      padding: 2rem; border-radius: 20px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(10px);
+      color: white; box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      animation: fadeIn 1s ease-in-out;
+    }
+    h1 { text-align: center; margin-bottom: 1rem; }
+    nav { text-align: center; margin-bottom: 1rem; }
+    nav button {
+      margin: .5rem; padding: .7rem 1.2rem;
+      border: none; border-radius: 15px;
+      background: rgba(255,255,255,0.3); color: white; font-weight: bold;
+      cursor: pointer; transition: .3s;
+    }
+    nav button:hover { transform: scale(1.1); background: rgba(255,255,255,0.5); }
+    section { display: none; }
+    section.active { display: block; animation: slideUp .6s ease; }
+    .card {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 12px; padding: 1rem; margin: .5rem 0;
+      animation: fadeIn .5s ease;
+    }
+    form { display: flex; flex-direction: column; gap: .5rem; margin-top: .5rem; }
+    form input, form button {
+      padding: .6rem; border: none; border-radius: 10px;
+    }
+    form button { background: #43cea2; font-weight: bold; cursor: pointer; }
+    form button:hover { background: #185a9d; color: white; }
+    .crop-img { max-width: 120px; border-radius: 10px; margin-top: .5rem; }
+    #searchBar, #priceFilter {
+      width: 48%; padding: .6rem; border: none; border-radius: 10px;
+      margin: .3rem 0; background: rgba(255,255,255,0.25); color: #333;
+    }
+    .filterBox { display: flex; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+    .notif { background: rgba(0,255,0,0.2); padding: .6rem; border-radius: 10px; margin-bottom: .5rem; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(30px);} to{opacity:1; transform:translateY(0);} }
+    @keyframes slideUp { from{opacity:0; transform:translateY(20px);} to{opacity:1; transform:translateY(0);} }
+  </style>
 </head>
 <body>
-  <div class="dashboard glass">
-    <h1>🛒 Buyer Dashboard</h1>
+  <div class="dashboard">
+    <h1 id="welcome">🛒 Buyer Dashboard</h1>
     <nav>
       <button onclick="showSection('browse')">Browse Listings</button>
       <button onclick="showSection('offers')">My Offers</button>
       <button onclick="showSection('orders')">Confirmed Orders</button>
+      <button onclick="showSection('notifications')">Notifications</button>
     </nav>
 
+    <!-- Browse -->
     <section id="browse" class="active">
       <h2>Browse Listings</h2>
-      <p>Search for crops available from farmers...</p>
+      <div class="filterBox">
+        <input type="text" id="searchBar" placeholder="Search crop name..." oninput="renderBrowse()">
+        <input type="number" id="priceFilter" placeholder="Max Price (₹)" oninput="renderBrowse()">
+      </div>
+      <div id="browseContainer"></div>
     </section>
 
+    <!-- Offers -->
     <section id="offers">
       <h2>My Offers</h2>
-      <p>No offers made yet...</p>
+      <div id="offersContainer"></div>
     </section>
 
+    <!-- Orders -->
     <section id="orders">
       <h2>Confirmed Orders</h2>
-      <p>No confirmed orders yet...</p>
+      <div id="ordersContainer"></div>
+    </section>
+
+    <!-- Notifications -->
+    <section id="notifications">
+      <h2>Notifications</h2>
+      <div id="notifContainer"></div>
     </section>
   </div>
-  <script src="script.js"></script>
+
+  <script>
+    function showSection(id) {
+      document.querySelectorAll("section").forEach(s=>s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      renderAll();
+    }
+    function getData(key){return JSON.parse(localStorage.getItem(key))||[];}
+    function setData(k,d){localStorage.setItem(k,JSON.stringify(d));}
+
+    const userName = localStorage.getItem("userName") || "Buyer";
+    document.getElementById("welcome").innerText = `🛒 Welcome, ${userName}`;
+
+    // Browse Listings with Search + Filter
+    function renderBrowse(){
+      const listings=getData("listings").filter(l=>l.status==="open");
+      const search=document.getElementById("searchBar").value.toLowerCase();
+      const maxPrice=document.getElementById("priceFilter").value;
+      const container=document.getElementById("browseContainer");
+      let filtered=listings.filter(l=>
+        (!search || l.crop.toLowerCase().includes(search)) &&
+        (!maxPrice || parseFloat(l.price)<=parseFloat(maxPrice))
+      );
+      container.innerHTML=filtered.length?"":"<p>No listings found...</p>";
+      filtered.forEach(list=>{
+        container.innerHTML+=`
+          <div class="card">
+            <strong>${list.crop}</strong> - ${list.quantity}kg @ ₹${list.price}/kg<br>
+            Farmer: ${list.farmer} | Date: ${list.date}<br>
+            ${list.img?`<img src="${list.img}" class="crop-img">`:""}
+            <form onsubmit="makeOffer(event, ${list.id}, '${list.crop}')">
+              <input type="number" placeholder="Qty (kg)" required>
+              <input type="number" placeholder="Offer Price/kg" required>
+              <button type="submit">Make Offer</button>
+            </form>
+          </div>`;
+      });
+    }
+
+    // Make Offer
+    function makeOffer(e, listingId, crop){
+      e.preventDefault();
+      const qty=e.target[0].value, price=e.target[1].value;
+      const offers=getData("offers");
+      offers.push({id:Date.now(), listingId, crop, qty, price, buyer:userName, status:"pending"});
+      setData("offers", offers);
+      renderAll();
+    }
+
+    // My Offers
+    function renderOffers(){
+      const offers=getData("offers").filter(o=>o.buyer===userName);
+      const container=document.getElementById("offersContainer");
+      container.innerHTML=offers.length?"":"<p>No offers made...</p>";
+      offers.forEach(o=>{
+        container.innerHTML+=`
+          <div class="card">
+            Crop: ${o.crop} | Qty: ${o.qty}kg | Price: ₹${o.price}/kg<br>
+            Status: ${o.status}
+          </div>`;
+      });
+    }
+
+    // Orders
+    function renderOrders(){
+      const sales=getData("sales").filter(s=>s.buyer===userName);
+      const container=document.getElementById("ordersContainer");
+      container.innerHTML=sales.length?"":"<p>No confirmed orders...</p>";
+      sales.forEach(s=>{
+        container.innerHTML+=`
+          <div class="card">
+            Crop: ${s.crop} | Qty: ${s.qty}kg | Price: ₹${s.price}/kg<br>
+            Farmer: ${s.farmer}
+          </div>`;
+      });
+    }
+
+    // Notifications
+    function renderNotifs(){
+      const offers=getData("offers").filter(o=>o.buyer===userName);
+      const notifs=offers.filter(o=>o.status!=="pending");
+      const container=document.getElementById("notifContainer");
+      container.innerHTML=notifs.length?"":"<p>No notifications...</p>";
+      notifs.forEach(n=>{
+        container.innerHTML+=`
+          <div class="notif">
+            Your offer for ${n.crop} (${n.qty}kg) was <strong>${n.status}</strong>.
+          </div>`;
+      });
+    }
+
+    function renderAll(){renderBrowse();renderOffers();renderOrders();renderNotifs();}
+    renderAll();
+  </script>
 </body>
 </html>
